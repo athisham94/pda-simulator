@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDA Simulator: S → aSb | ab</title>
+<style>
+:root{--bg:#f3f1ea;--card:#fff;--ink:#1b2333;--mut:#5b6475;--line:#d5d9e2;--navy:#1b2a49;--S:#e8590c;--a:#1971c2;--b:#2f9e44;--ok:#2f9e44;--bad:#c92a2a;--hl:#fff3bf;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141d;--card:#1a2130;--ink:#e8ecf4;--mut:#9aa5b8;--line:#2f3a50;--navy:#2b3f6b;--hl:#4a3f10}}
+:root[data-theme="dark"]{--bg:#10141d;--card:#1a2130;--ink:#e8ecf4;--mut:#9aa5b8;--line:#2f3a50;--navy:#2b3f6b;--hl:#4a3f10}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.45}
+header{background:var(--navy);color:#fff;padding:16px 16px 14px}
+h1{margin:0;font-size:1.25rem}header p{margin:4px 0 0;font-size:.85rem;opacity:.85}
+main{max-width:760px;margin:0 auto;padding:12px;display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+h2{margin:0 0 8px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input{flex:1;min-width:120px;font:inherit;font-size:1.1rem;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);letter-spacing:.1em}
+button{font:inherit;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.p{background:var(--S);border-color:var(--S);color:#fff;font-weight:600}
+button:disabled{opacity:.4;cursor:default}
+.chip{padding:5px 10px;font-size:.85rem;border-radius:99px}
+.tape{display:flex;gap:4px;overflow-x:auto;padding:4px 0 2px}
+.cell{min-width:36px;height:40px;display:flex;align-items:center;justify-content:center;border:2px solid var(--line);border-radius:6px;font-weight:700;font-size:1.1rem}
+.cell.a{color:var(--a)}.cell.b{color:var(--b)}.cell.cur{border-color:var(--S);background:var(--hl)}.cell.done{opacity:.4}
+.head{font-size:.75rem;color:var(--S);height:14px;display:flex;gap:4px}.head span{min-width:36px;text-align:center}
+.two{display:grid;grid-template-columns:130px 1fr;gap:12px}
+.stack{min-height:150px;border:2px dashed var(--line);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:flex-start}
+.sc{width:100%;height:30px;border-radius:6px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sc.S{background:var(--S)}.sc.a{background:var(--a)}.sc.b{background:var(--b)}
+.lbl{font-size:.75rem;color:var(--mut);text-align:center;margin-top:4px}
+.move{font-size:1.05rem;font-weight:700;min-height:1.5em}
+.verdict{font-weight:800;font-size:1.15rem;margin-top:6px}.ok{color:var(--ok)}.bad{color:var(--bad)}
+.rule{padding:6px 8px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;border:1px solid transparent}
+.rule.on{background:var(--hl);border-color:var(--S)}
+.note{font-size:.85rem;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace}
+tr.cur td{background:var(--hl)}
+</style>
+</head>
+<body>
+<header><h1>PDA Simulator: S → aSb | ab</h1><p>CFG → PDA · accepts exactly aⁿbⁿ (n ≥ 1) · by empty stack</p></header>
+<main>
+<section class="card">
+<h2>Enter a string (only a and b)</h2>
+<div class="row"><input id="inp" value="aaabbb" autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Input string"><button class="p" id="run">Run</button></div>
+<div class="row" style="margin-top:8px" id="chips"></div>
+</section>
+<section class="card">
+<h2>Input tape</h2><div class="head" id="head"></div><div class="tape" id="tape"></div>
+<div class="two" style="margin-top:10px">
+<div><div class="stack" id="stack"></div><div class="lbl">STACK (top is first)</div></div>
+<div><h2>Current move</h2><div class="move" id="move">–</div><div class="note" id="info"></div><div class="verdict" id="verdict"></div></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="prev">◀ Prev</button><button id="next" class="p">Next ▶</button><button id="auto">Auto-play</button><button id="reset">Reset</button></div>
+</section>
+<section class="card"><h2>PDA rules (single state q)</h2><div id="rules"></div></section>
+<section class="card"><h2>Trace so far</h2><div style="overflow-x:auto"><table id="tr"><thead><tr><th>Step</th><th>Input left</th><th>Stack</th><th>Move</th></tr></thead><tbody></tbody></table></div>
+<p class="note" id="search"></p></section>
+<p class="note" style="text-align:center">FLA poster · Topic 3 Q6 · Athisham Farooq &amp; Anant Aggarwal</p>
+</main>
+<script>
+var RULES=[["R1","ε, S / aSb","δ(q, ε, S) = (q, aSb)"],["R2","ε, S / ab","δ(q, ε, S) = (q, ab)"],["R3","a, a / ε","δ(q, a, a) = (q, ε)"],["R4","b, b / ε","δ(q, b, b) = (q, ε)"]];
+var path=[],pos=0,timer=null,str="",tried=0;
+function $(id){return document.getElementById(id)}
+function search(s){
+  var n=s.length,best=null;tried=0;
+  function dfs(i,st,p){
+    tried++;
+    if(st===""&&i===n)return p;
+    var fail=function(){if(!best||i>best.i||(i===best.i&&p.length>best.p.length))best={i:i,p:p};return null};
+    if(st.length>n-i||tried>20000)return fail();
+    var t=st[0];
+    if(t==="S"){
+      var opts=[["R1","aSb"],["R2","ab"]];
+      for(var k=0;k<2;k++){var ns=opts[k][1]+st.slice(1);var r=dfs(i,ns,p.concat([{i:i,st:ns,rule:opts[k][0],mv:"S → "+opts[k][1]}]));if(r)return r}
+      return fail();
+    }
+    if(i<n&&s[i]===t){return dfs(i+1,st.slice(1),p.concat([{i:i+1,st:st.slice(1),rule:t==="a"?"R3":"R4",mv:"match "+t}]))||fail()}
+    return fail();
+  }
+  var start=[{i:0,st:"S",rule:null,mv:"start (stack = S)"}];
+  var acc=dfs(0,"S",start);
+  return acc?{ok:true,p:acc}:{ok:false,p:best?best.p:start};
+}
+function render(){
+  var s=str,cur=path[pos],n=s.length;
+  var th="",tp="";
+  for(var k=0;k<n;k++){th+="<span>"+(k===cur.i?"▼":"")+"</span>";tp+='<div class="cell '+s[k]+(k===cur.i?" cur":"")+(k<cur.i?" done":"")+'">'+s[k]+"</div>"}
+  if(!n)tp='<div class="note">(empty string)</div>';
+  $("head").innerHTML=th;$("tape").innerHTML=tp;
+  var sh="";for(var j=0;j<cur.st.length;j++)sh+='<div class="sc '+cur.st[j]+'">'+cur.st[j]+"</div>";
+  $("stack").innerHTML=sh||'<span class="note">empty</span>';
+  $("move").textContent=cur.mv;
+  $("info").textContent="Step "+pos+" of "+(path.length-1)+" · input left: "+(s.slice(cur.i)||"ε");
+  var last=pos===path.length-1,v=$("verdict");
+  if(last){if(res.ok){v.textContent="✓ ACCEPTED (stack empty, input consumed)";v.className="verdict ok"}else{v.textContent="✗ REJECTED (no choice of rules empties the stack with the input consumed)";v.className="verdict bad"}}else{v.textContent="";v.className="verdict"}
+  var rh="";RULES.forEach(function(r){rh+='<div class="rule'+(cur.rule===r[0]?" on":"")+'">'+r[1]+"&nbsp;&nbsp;&nbsp;"+r[2]+"</div>"});$("rules").innerHTML=rh;
+  var tb="";path.forEach(function(x,idx){if(idx>pos)return;tb+="<tr"+(idx===pos?' class="cur"':"")+"><td>"+idx+"</td><td>"+(s.slice(x.i)||"ε")+"</td><td>"+(x.st||"ε")+"</td><td>"+x.mv+"</td></tr>"});
+  $("tr").tBodies[0].innerHTML=tb;
+  $("prev").disabled=pos===0;$("next").disabled=last;
+}
+var res;
+function run(){
+  stop();str=$("inp").value.replace(/[^ab]/g,"");$("inp").value=str;
+  res=search(str);path=res.p;pos=0;
+  $("search").textContent="The PDA is nondeterministic on S, so the simulator tried "+tried+" configuration"+(tried===1?"":"s")+" across the choices (aSb or ab). "+(res.ok?"It shows the accepting run.":"It shows the run that got furthest, which still fails.");
+  render();
+}
+function stop(){if(timer){clearInterval(timer);timer=null;$("auto").textContent="Auto-play"}}
+$("run").onclick=run;$("reset").onclick=function(){stop();pos=0;render()};
+$("next").onclick=function(){if(pos<path.length-1){pos++;render()}};
+$("prev").onclick=function(){stop();if(pos>0){pos--;render()}};
+$("auto").onclick=function(){if(timer){stop();return}if(pos>=path.length-1)pos=0;$("auto").textContent="Pause";render();timer=setInterval(function(){if(pos<path.length-1){pos++;render()}else stop()},900)};
+$("inp").addEventListener("keydown",function(e){if(e.key==="Enter")run()});
+["aaabbb","aabb","ab","aabbb","ba","aab"].forEach(function(s){var b=document.createElement("button");b.className="chip";b.textContent=s;b.onclick=function(){$("inp").value=s;run()};$("chips").appendChild(b)});
+run();
+</script>
+</body>
+</html>
